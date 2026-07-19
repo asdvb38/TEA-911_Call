@@ -1,11 +1,11 @@
 -- ============================================================
--- 911 Call Plugin - Server Main
--- Command registration and call session management
+-- 911呼叫插件 — 服务器主逻辑
+-- 命令注册与会话管理
 -- ============================================================
 
-local CallSessions = {}  -- Tracks active call sessions per player
+local CallSessions = {}  -- 跟踪每个玩家的通话会话
 
--- Load config safely
+--- 安全加载配置文件
 local function LoadConfig()
     local configPath = 'config/settings.lua'
     local resourcePath = GetResourcePath('binarybeaco_911call')
@@ -16,19 +16,19 @@ local function LoadConfig()
         local content = file:read('*all')
         file:close()
 
-        -- Extract Config table from the file
+        -- 执行配置文件中的 Lua 代码
         local fn, err = load(content, 'settings.lua', 't')
         if fn then
             fn()
             return Config
         else
-            print('^1[911call] Failed to load config: ' .. tostring(err) .. '^7')
+            print('^1[911呼叫] 加载配置失败: ' .. tostring(err) .. '^7')
         end
     else
-        print('^1[911call] Config file not found: ' .. filePath .. '^7')
+        print('^1[911呼叫] 配置文件不存在: ' .. filePath .. '^7')
     end
 
-    -- Return defaults if config fails to load
+    -- 配置加载失败时使用默认值
     return {
         APISettings = {
             URL = 'https://apihub.agnes-ai.com/v1/chat/completions',
@@ -48,10 +48,10 @@ local function LoadConfig()
         WaitTime = 2000,
         Language = 'en',
         ChatSettings = {
-            OperatorPrefix = '[OPERATOR]',
-            DispatcherPrefix = '[DISPATCHER]',
-            SystemPrefix = '[911 SYSTEM]',
-            CaseReportPrefix = '[CASE REPORT]',
+            OperatorPrefix = '[接线员]',
+            DispatcherPrefix = '[调度员]',
+            SystemPrefix = '[911系统]',
+            CaseReportPrefix = '[案件报告]',
         },
         EnableDebug = false,
     }
@@ -59,19 +59,19 @@ end
 
 Config = LoadConfig()
 
---- Log debug message
+--- 记录调试日志
 function DebugLog(msg)
     if Config.EnableDebug then
-        print('^5[911call DEBUG]^7 ' .. tostring(msg))
+        print('^5[911呼叫 调试]^7 ' .. tostring(msg))
     end
 end
 
---- Check if player has an active session
+--- 检查玩家是否有活跃的会话
 function HasActiveSession(source)
     return CallSessions[source] ~= nil
 end
 
---- Create a new call session
+--- 创建新的呼叫会话
 function CreateSession(source, playerName)
     CallSessions[source] = {
         source = source,
@@ -82,93 +82,93 @@ function CreateSession(source, playerName)
         status = 'initiated',
         caseNumber = nil,
     }
-    DebugLog('Session created for player ' .. source .. ': ' .. CallSessions[source].playerName)
+    DebugLog('为玩家 ' .. source .. ' 创建会话: ' .. CallSessions[source].playerName)
 end
 
---- Get current session
+--- 获取当前会话
 function GetSession(source)
     return CallSessions[source]
 end
 
---- Update session field
+--- 更新会话字段
 function UpdateSession(source, field, value)
     if CallSessions[source] then
         CallSessions[source][field] = value
-        DebugLog('Session updated: ' .. field .. ' = ' .. tostring(value))
+        DebugLog('会话更新: ' .. field .. ' = ' .. tostring(value))
     end
 end
 
---- Complete and clean up session
+--- 完成并清理会话
 function CompleteSession(source)
     if CallSessions[source] then
-        DebugLog('Session completed for player ' .. source)
+        DebugLog('玩家 ' .. source .. ' 会话已完成')
         CallSessions[source] = nil
     end
 end
 
---- Register /911call command
+--- 注册 /911call 命令
 RegisterCommand('911call', function(source, args, rawCommand)
-    if source == 0 then return end  -- Console not allowed
+    if source == 0 then return end  -- 不允许控制台使用
 
-    -- Check if player already has an active session
+    -- 检查玩家是否已有活跃会话
     if HasActiveSession(source) then
         TriggerClientEvent('chat:addMessage', source, {
             color = {255, 0, 0},
-            args = {'ERROR', 'You already have an active 911 call session. Use /911say to report.'}
+            args = {'错误', '您已有一个活跃的911呼叫会话。请使用 /911say 描述您的紧急情况。'}
         })
         return
     end
 
-    -- Create session
+    -- 创建新会话
     CreateSession(source)
     UpdateSession(source, 'status', 'waiting')
 
-    -- Notify client to show the 911 prompt after delay
+    -- 通知客户端在延迟后显示911提示
     local waitTime = Config.WaitTime or 2000
     TriggerClientEvent('911call:startFlow', source, waitTime)
 
-    DebugLog('/911call executed by player ' .. source)
+    DebugLog('玩家 ' .. source .. ' 使用了 /911call')
 end, false)
 
---- Register /911say command
+--- 注册 /911say 命令
 RegisterCommand('911say', function(source, args, rawCommand)
-    if source == 0 then return end  -- Console not allowed
+    if source == 0 then return end  -- 不允许控制台使用
 
-    -- Check if player has an active session
+    -- 检查玩家是否有活跃会话
     if not HasActiveSession(source) then
         TriggerClientEvent('chat:addMessage', source, {
             color = {255, 0, 0},
-            args = {'ERROR', 'Use /911call first to start a 911 report.'}
+            args = {'错误', '请先使用 /911call 开始911报案。'}
         })
         return
     end
 
-    -- Get the message (everything after /911say)
+    -- 获取消息内容（/911say 之后的所有内容）
     local message = table.concat(args, ' ')
     if message == '' or #message < 3 then
         TriggerClientEvent('chat:addMessage', source, {
             color = {255, 0, 0},
-            args = {'ERROR', 'Please describe your emergency. Example: /911say I see a shooting at the gas station on 1st street.'}
+            args = {'错误', '请详细描述您的紧急情况。例如: /911say 我看到加油站有人开枪射击'}
         })
         return
     end
 
-    -- Store message in session
+    -- 存储消息到会话
     UpdateSession(source, 'message', message)
     UpdateSession(source, 'status', 'processing')
 
-    -- Get player location
+    -- 获取玩家位置
     local ped = GetPlayerPed(source)
     local coords = GetEntityCoords(ped)
     UpdateSession(source, 'location', { x = coords.x, y = coords.y, z = coords.z })
 
-    DebugLog('Player ' .. source .. ' reported: ' .. message)
+    DebugLog('玩家 ' .. source .. ' 报告: ' .. message)
 
-    -- Trigger server-side AI processing
+    -- 触发服务端AI处理
     ProcessReport(source)
 end, false)
 
---- Main report processing pipeline
+--- 主要报告处理流程
 function ProcessReport(source)
     local session = GetSession(source)
     if not session then return end
@@ -176,11 +176,11 @@ function ProcessReport(source)
     local message = session.message
     local coords = session.location
 
-    -- Step 1: Classify emergency type using trigger words
+    -- 第一步：通过触发词分类紧急类型
     local emergencyType = ClassifyEmergency(message)
-    DebugLog('Emergency type classified: ' .. emergencyType)
+    DebugLog('紧急类型分类: ' .. emergencyType)
 
-    -- Step 2: Dispatch based on style
+    -- 第二步：根据调度风格处理
     local dispatchStyle = Config.DispatchStyle or 'A'
 
     if dispatchStyle == 'A' then
@@ -190,5 +190,5 @@ function ProcessReport(source)
     end
 end
 
---- Export for external resources
+--- 供外部资源调用的导出
 exports('ProcessReport', ProcessReport)

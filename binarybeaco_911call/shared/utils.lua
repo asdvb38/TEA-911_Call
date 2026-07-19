@@ -1,17 +1,17 @@
 -- ============================================================
--- 911 Call Plugin - Shared Utilities
+-- 911呼叫插件 — 共享工具函数
 -- ============================================================
 
 local TriggerWordsCache = nil
 
---- Load trigger words from JSON config file
+--- 从 JSON 配置文件加载触发词库
 function LoadTriggerWords()
     if TriggerWordsCache then return TriggerWordsCache end
 
     local path = 'config/triggerwords.json'
     local file = LoadResourceFile('binarybeaco_911call', path)
     if not file then
-        print('^1[911call] Failed to load triggerwords.json, using defaults^7')
+        print('^1[911呼叫] 无法加载 triggerwords.json，使用默认词库^7')
         return {}
     end
 
@@ -19,9 +19,9 @@ function LoadTriggerWords()
     return TriggerWordsCache
 end
 
---- Classify a message by matching trigger words
--- @param message string - The player's emergency message
--- @return string - The classified emergency type
+--- 通过匹配触发词对消息进行分类
+-- @param message string - 玩家的紧急报告内容
+-- @return string - 分类后的紧急类型
 function ClassifyEmergency(message)
     local words = LoadTriggerWords()
     if not words or not message then return 'unknown' end
@@ -33,7 +33,7 @@ function ClassifyEmergency(message)
     for category, keywords in pairs(words) do
         for _, keyword in ipairs(keywords) do
             if string.find(lowerMsg, string.lower(keyword)) then
-                local score = #keyword  -- longer keyword = stronger match
+                local score = #keyword  -- 关键词越长，匹配权重越高
                 if score > bestScore then
                     bestScore = score
                     bestMatch = category
@@ -45,76 +45,78 @@ function ClassifyEmergency(message)
     return bestMatch
 end
 
---- Get a formatted display name for emergency type
--- @param type string - The emergency type from classification
--- @return string - Human-readable name
+--- 获取紧急类型的中文显示名称
+-- @param type string - 分类后的紧急类型
+-- @return string - 人类可读的名称
 function GetEmergencyDisplayName(type)
     local names = {
-        shooting = 'Shooting Incident',
-        robbery = 'Robbery',
-        car_accident = 'Vehicle Accident',
-        kidnapping = 'Kidnapping',
-        domestic_violence = 'Domestic Violence',
-        suspicious_activity = 'Suspicious Activity',
-        medical_emergency = 'Medical Emergency',
-        fire = 'Fire/Explosion',
-        unknown = 'Unclassified',
+        shooting = '枪击事件',
+        robbery = '抢劫',
+        car_accident = '车辆事故',
+        kidnapping = '绑架',
+        domestic_violence = '家庭暴力',
+        suspicious_activity = '可疑活动',
+        medical_emergency = '医疗急救',
+        fire = '火灾/爆炸',
+        assault = '袭击',
+        hostage = '劫持人质',
+        unknown = '未分类',
     }
     return names[type] or type
 end
 
---- Get player coordinates (cross-framework compatible)
--- @param source number - Player server-side source ID
--- @return table - {x, y, z} coordinates
-function GetPlayerCoords(source)
-    local coords = GetEntityCoords(GetPlayerPed(source))
+--- 获取当前玩家坐标（仅限客户端使用）
+-- @return table - {x, y, z} 坐标
+function GetPlayerCoords()
+    local ped = PlayerPedId()
+    local coords = GetEntityCoords(ped)
     return { x = coords.x, y = coords.y, z = coords.z }
 end
 
---- Convert coordinates to a readable address-like string
--- @param coords table - {x, y, z} coordinates
--- @return string - Readable coordinate string
+--- 将坐标转换为可读字符串
+-- @param coords table - {x, y, z} 坐标
+-- @return string - 可读坐标字符串
 function CoordsToString(coords)
     return string.format('%.2f, %.2f, %.2f', coords.x, coords.y, coords.z)
 end
 
---- Generate a unique case number
--- @return string - Format: 911-YYYYMMDD-XXXX
+--- 生成唯一案件编号
+-- @return string - 格式: 911-YYYYMMDD-XXXX
 function GenerateCaseNumber()
     local date = os.date('%Y%m%d')
     local rand = math.random(1000, 9999)
     return string.format('911-%s-%s', date, rand)
 end
 
---- Base64 encode a string
--- @param data string - Raw binary data
--- @return string - Base64 encoded string
+--- Base64 编码
+-- @param data string - 原始二进制数据
+-- @return string - Base64 编码字符串
 function Base64Encode(data)
     return b64encode(data)
 end
 
---- Format a case report for display and TTS
--- @param report table - Raw report data
--- @return string - Formatted text for chat + TTS
+--- 格式化案件报告用于聊天显示
+-- @param report table - 原始报告数据
+-- @return string - 格式化后的报告文本
 function FormatCaseReport(report)
     if not report then return '' end
 
     local lines = {}
-    lines[#lines + 1] = string.format('CASE %s', report.caseNumber or 'N/A')
-    lines[#lines + 1] = string.format('TYPE: %s', report.emergencyType or 'Unknown')
-    lines[#lines + 1] = string.format('LOCATION: %s', report.location or 'Unknown')
-    lines[#lines + 1] = string.format('SUMMARY: %s', report.summary or 'No details')
-    lines[#lines + 1] = string.format('PRIORITY: %s', report.priority or 'Unassigned')
-    lines[#lines + 1] = string.format('UNITS: %s', report.units or 'None')
-    lines[#lines + 1] = string.format('STATUS: %s', report.status or 'Active')
-    lines[#lines + 1] = string.format('CODES: %s', report.dispatchCodes or 'Pending')
+    lines[#lines + 1] = string.format('案件编号: %s', report.caseNumber or '未知')
+    lines[#lines + 1] = string.format('类型: %s', report.emergencyType or '未知')
+    lines[#lines + 1] = string.format('地点: %s', report.location or '未知')
+    lines[#lines + 1] = string.format('摘要: %s', report.summary or '无详细信息')
+    lines[#lines + 1] = string.format('优先级: %s', report.priority or '未分配')
+    lines[#lines + 1] = string.format('出动单位: %s', report.units or '无')
+    lines[#lines + 1] = string.format('状态: %s', report.status or '活跃')
+    lines[#lines + 1] = string.format('调度代码: %s', report.dispatchCodes or '待定')
 
     return table.concat(lines, '\n')
 end
 
---- Format report as plain text for TTS (no special characters)
--- @param report table - Raw report data
--- @return string - Clean text for speech synthesis
+--- 格式化报告为纯文本用于TTS播报（英文，无特殊字符）
+-- @param report table - 原始报告数据
+-- @return string - 用于语音合成的纯文本
 function FormatReportForTTS(report)
     if not report then return '' end
 

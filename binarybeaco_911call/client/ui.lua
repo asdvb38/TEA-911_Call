@@ -1,11 +1,11 @@
 -- ============================================================
--- 911 Call Plugin - NUI UI Management
--- Handles NUI visibility and callbacks
+-- 911呼叫插件 — NUI界面管理
+-- 处理NUI可见性和回调
 -- ============================================================
 
 local isNUIFocused = false
 
---- Show the NUI overlay
+--- 显示NUI覆盖层
 function ShowNUI()
     if isNUIFocused then return end
     SetNuiFocus(true, false)
@@ -14,7 +14,7 @@ function ShowNUI()
     SendNUIMessage({ action = 'setVisible', visible = true })
 end
 
---- Hide the NUI overlay
+--- 隐藏NUI覆盖层
 function HideNUI()
     if not isNUIFocused then return end
     SetNuiFocus(false, false)
@@ -23,7 +23,7 @@ function HideNUI()
     SendNUIMessage({ action = 'setVisible', visible = false })
 end
 
---- Toggle NUI visibility
+--- 切换NUI可见性
 function ToggleNUI()
     if isNUIFocused then
         HideNUI()
@@ -32,17 +32,14 @@ function ToggleNUI()
     end
 end
 
--- NUI callback: when player types in chat, hide NUI overlay
+-- NUI回调：当玩家在聊天中输入时隐藏NUI覆盖层
 RegisterNUICallback('chatInput', function(data, cb)
     HideNUI()
     cb('ok')
 end)
 
--- NUI callback: when player clicks to dismiss
+-- NUI回调：当玩家点击关闭时
 RegisterNUICallback('dismiss', function(data, cb)
     HideNUI()
     cb('ok')
 end)
-
--- Handle ESC key to close NUI
-RegisterKeyMapping('911call-toggle', 'Toggle 911 Call UI', 'keyboard', 'ESC')

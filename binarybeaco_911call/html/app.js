@@ -1,6 +1,6 @@
 // ============================================================
-// 911 Call Plugin - NUI JavaScript
-// Handles chat messages, report display, and audio playback
+// 911呼叫插件 — NUI JavaScript
+// 处理聊天消息、报告显示和音频播放
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ttsAudio = document.getElementById('ttsAudio');
     const playAudioBtn = document.getElementById('playAudioBtn');
 
-    // --- NUI Message Handler ---
+    // --- NUI 消息处理器 ---
     window.addEventListener('message', function (event) {
         const data = event.data;
 
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- Hint Functions ---
+    // --- 提示相关函数 ---
     function showHint(text) {
         hintTextEl.textContent = text;
         hintEl.classList.remove('hidden');
@@ -55,29 +55,29 @@ document.addEventListener('DOMContentLoaded', function () {
         hintEl.classList.add('hidden');
     }
 
-    // --- Report Functions ---
+    // --- 报告相关函数 ---
     function showReport(report) {
         if (!report) return;
 
         reportBody.innerHTML = '';
 
         const rows = [
-            { label: 'Case Number', value: report.caseNumber || 'N/A' },
-            { label: 'Type', value: report.emergencyType || 'Unknown' },
-            { label: 'Location', value: report.location || 'Unknown' },
-            { label: 'Caller', value: report.callerName || 'Unknown' },
-            { label: 'Summary', value: report.summary || 'No details' },
-            { label: 'People Involved', value: report.peopleInvolved || 'Not specified' },
-            { label: 'Severity', value: report.severity || 'MEDIUM' },
-            { label: 'Priority', value: report.priority || 'MEDIUM' },
-            { label: 'Dispatch Codes', value: report.dispatchCodes || 'Pending' },
-            { label: 'Units', value: report.units || 'None' },
-            { label: 'Est. Response', value: report.estimatedResponse || 'TBD' },
-            { label: 'Status', value: report.status || 'ACTIVE' },
+            { label: '案件编号', value: report.caseNumber || '未知' },
+            { label: '类型', value: report.emergencyType || '未知' },
+            { label: '地点', value: report.location || '未知' },
+            { label: '报案人', value: report.callerName || '未知' },
+            { label: '摘要', value: report.summary || '无详细信息' },
+            { label: '涉及人员', value: report.peopleInvolved || '未说明' },
+            { label: '严重程度', value: report.severity || '中' },
+            { label: '优先级', value: report.priority || '中' },
+            { label: '调度代码', value: report.dispatchCodes || '待定' },
+            { label: '出动单位', value: report.units || '无' },
+            { label: '预计响应', value: report.estimatedResponse || '待定' },
+            { label: '状态', value: report.status || '活跃' },
         ];
 
         if (report.additionalNotes && report.additionalNotes !== '') {
-            rows.push({ label: 'Notes', value: report.additionalNotes });
+            rows.push({ label: '备注', value: report.additionalNotes });
         }
 
         rows.forEach(function (row) {
@@ -92,16 +92,16 @@ document.addEventListener('DOMContentLoaded', function () {
             valueEl.className = 'report-value';
             valueEl.textContent = row.value;
 
-            // Color-code severity/priority
-            if ((row.label === 'Severity' || row.label === 'Priority') && row.value) {
+            // 严重程度/优先级颜色标记
+            if ((row.label === '严重程度' || row.label === '优先级') && row.value) {
                 var sev = row.value.toLowerCase();
-                if (sev === 'critical') {
+                if (sev === '危急' || sev === 'critical') {
                     valueEl.classList.add('severity-critical');
-                } else if (sev === 'high') {
+                } else if (sev === '高' || sev === 'high') {
                     valueEl.classList.add('severity-high');
-                } else if (sev === 'medium') {
+                } else if (sev === '中' || sev === 'medium') {
                     valueEl.classList.add('severity-medium');
-                } else if (sev === 'low') {
+                } else if (sev === '低' || sev === 'low') {
                     valueEl.classList.add('severity-low');
                 }
             }
@@ -111,24 +111,25 @@ document.addEventListener('DOMContentLoaded', function () {
             reportBody.appendChild(rowEl);
         });
 
+        // 显示覆盖层
         reportOverlay.classList.remove('hidden');
     }
 
-    // --- Audio Functions ---
+    // --- 音频相关函数 ---
     function playTTSAudio(audioPath, audioBase64) {
         if (!audioPath && !audioBase64) return;
 
         if (audioBase64) {
-            // Use base64 data directly
+            // 使用Base64数据直接播放
             ttsAudio.src = audioBase64;
         } else if (audioPath) {
-            // Fallback: try nui:// protocol
+            // 降级：尝试 nui:// 协议
             var audioUrl = 'nui://' + audioPath;
             ttsAudio.src = audioUrl;
         }
 
         ttsAudio.play().catch(function (err) {
-            console.warn('TTS Audio playback failed:', err);
+            console.warn('TTS音频播放失败:', err);
         });
     }
 
@@ -142,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- Visibility ---
+    // --- 可见性控制 ---
     function setVisible(visible) {
         if (visible) {
             reportOverlay.classList.remove('hidden');
@@ -151,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // --- Global functions for onclick handlers ---
+    // --- 全局函数（供 onclick 调用） ---
     window.dismissReport = function () {
         reportOverlay.classList.add('hidden');
         ttsAudio.pause();

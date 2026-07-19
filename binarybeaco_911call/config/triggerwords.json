@@ -1,0 +1,12 @@
+{
+    "shooting": ["shooting", "gun", "gunshot", "shoot", "weapon", "firearm", "shots fired", "gunfire"],
+    "robbery": ["robbery", "rob", "steal", "theft", "holdup", "bank robbery", "armed robbery", "shoplifting"],
+    "car_accident": ["car accident", "crash", "collision", "mva", "vehicle accident", "car crash", "traffic accident"],
+    "kidnapping": ["kidnapping", "abducted", "missing person", "forced", "abduction", "taken"],
+    "domestic_violence": ["domestic", "family violence", "spouse abuse", "partner abuse", "household violence"],
+    "suspicious_activity": ["suspicious", "suspect", "loitering", "breaking in", "burglary", "vandalism", "suspicious person"],
+    "medical_emergency": ["heart attack", "unconscious", "bleeding", "medical", "overdose", "chest pain", "can't breathe", "seizure", "not responding"],
+    "fire": ["fire", "burning", "smoke", "explosion", "blaze", "smelling smoke"],
+    "assault": ["assault", "beat", "punch", "kick", "fight", "attack", "stabbed", "knife"],
+    "hostage": ["hostage", "held captive", "taken hostage", " barricaded"]
+}

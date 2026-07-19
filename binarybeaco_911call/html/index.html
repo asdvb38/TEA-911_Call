@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>911 Call System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Audio element for TTS playback -->
+    <audio id="ttsAudio" preload="auto"></audio>
+
+    <!-- Hint overlay -->
+    <div id="hint" class="hint-overlay hidden">
+        <div class="hint-text"></div>
+    </div>
+
+    <!-- Report overlay -->
+    <div id="reportOverlay" class="report-overlay hidden">
+        <div class="report-container">
+            <div class="report-header">
+                <span class="report-title">911 CASE REPORT</span>
+                <span class="report-close" onclick="dismissReport()">[X]</span>
+            </div>
+            <div class="report-body" id="reportBody">
+                <!-- Report content injected here -->
+            </div>
+            <div class="report-footer">
+                <button id="playAudioBtn" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+                    Play Broadcast
+                </button>
+                <button id="dismissBtn" class="btn btn-secondary" onclick="dismissReport()">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,10 +1,14 @@
 -- ============================================================
--- 911呼叫插件 — 调度逻辑
--- 支持风格A（接线员→调度员）和风格B（统一处理）
--- 使用回调式AI调用以适配FiveM异步模型
+-- 911 Call Plugin - Dispatch Logic
+-- Supports Style A (Operator->Dispatcher) and Style B (Unified)
+-- Uses callback-based AI calls for proper FiveM async handling
+-- Includes follow-up questioning when report is incomplete
 -- ============================================================
 
---- 风格A处理：接线员 → 调度员 两步流程
+--- Maximum follow-up questions before giving up
+MAX_FOLLOWUPS = 3
+
+--- Process report using Style A: Operator then Dispatcher
 function ProcessStyleA(source, message, coords, emergencyType)
     local session = GetSession(source)
     if not session then return end
@@ -12,17 +16,26 @@ function ProcessStyleA(source, message, coords, emergencyType)
     local playerName = session.playerName
     local locationStr = CoordsToString(coords)
 
-    -- 第一步：接线员提示词
-    local operatorSystem = [[You are a professional 911 emergency operator. Analyze the caller's emergency report carefully.
-Extract the most detailed location information possible from what the caller describes AND their GPS coordinates.
+    -- Step 1: Operator analyzes and decides if more info is needed
+    local operatorSystem = [[You are a professional 911 emergency operator. Analyze the caller's emergency report.
+Determine if the report contains enough detail to proceed.
+REQUIRED information: specific location, nature of emergency, number of people involved, weapons if any, suspect description/direction.
+
 Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
 {
-    "extractedLocation": "Detailed location from caller description and GPS",
+    "needsClarification": true or false,
+    "followUpQuestion": "Specific question to ask the caller if more info needed. Leave empty if enough info.",
+    "extractedLocation": "Detailed location from caller description and GPS (or Unknown)",
     "summary": "Brief summary of the emergency situation",
     "severity": "LOW|MEDIUM|HIGH|CRITICAL",
     "peopleInvolved": "Description of people involved",
     "callerDescription": "Brief description of the caller's situation"
-}]]
+}
+
+IMPORTANT:
+- If the report is vague (e.g., "someone got shot", "there is a robbery"), ALWAYS ask for more details.
+- Your followUpQuestion should be specific and helpful, asking for the missing information.
+- Only set needsClarification to false when you have: exact location, clear emergency type, people involved, and suspect details.]]
 
     local operatorPrompt = string.format(
         "Caller: %s\nLocation (GPS): %s\nEmergency Type: %s\nCaller Report: %s",
@@ -33,17 +46,23 @@ Respond with VALID JSON only, no markdown formatting, no code blocks. Use these 
 
     CallAI(operatorPrompt, operatorSystem, function(operatorResponse)
         if not operatorResponse then
-            SendFailureResponse(source, 'AI operator failed to respond.')
+            SendFollowUpQuestion(source, 'The 911 center is experiencing technical difficulties. Please try again.', session)
             return
         end
 
         local operatorData = ParseAIResponse(operatorResponse)
         if not operatorData then
-            SendFailureResponse(source, 'Failed to parse operator response.')
+            SendFollowUpQuestion(source, 'Unable to process your report. Please describe the emergency in more detail.', session)
             return
         end
 
-        -- 第二步：调度员提示词
+        -- Check if more information is needed
+        if operatorData.needsClarification and operatorData.followUpQuestion then
+            SendFollowUpQuestion(source, operatorData.followUpQuestion, session)
+            return
+        end
+
+        -- Step 2: Dispatcher prompt (only when info is sufficient)
         local dispatcherSystem = [[You are a professional 911 dispatcher. Based on the operator's summary, analyze the case and assign appropriate dispatch codes.
 Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
 {
@@ -74,13 +93,13 @@ Respond with VALID JSON only, no markdown formatting, no code blocks. Use these 
                 return
             end
 
-            -- 第三步：组合完整案件报告
+            -- Build and send complete case report
             BuildAndSendReport(source, operatorData, dispatcherData, message, playerName, emergencyType)
         end)
     end)
 end
 
---- 风格B处理：统一接线员+调度员一步到位
+--- Process report using Style B: Unified operator + dispatcher
 function ProcessStyleB(source, message, coords, emergencyType)
     local session = GetSession(source)
     if not session then return end
@@ -88,10 +107,15 @@ function ProcessStyleB(source, message, coords, emergencyType)
     local playerName = session.playerName
     local locationStr = CoordsToString(coords)
 
-    local unifiedSystem = [[You are a combined 911 emergency operator and dispatcher. Analyze the caller's emergency report and provide a comprehensive case analysis.
+    local unifiedSystem = [[You are a combined 911 emergency operator and dispatcher. Analyze the caller's emergency report.
+Determine if the report contains enough detail to proceed.
+REQUIRED information: specific location, nature of emergency, number of people involved, weapons if any, suspect description/direction.
+
 Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
 {
-    "extractedLocation": "Detailed location from caller description and GPS",
+    "needsClarification": true or false,
+    "followUpQuestion": "Specific question to ask the caller if more info needed. Leave empty if enough info.",
+    "extractedLocation": "Detailed location from caller description and GPS (or Unknown)",
     "summary": "Brief summary of the emergency situation",
     "severity": "LOW|MEDIUM|HIGH|CRITICAL",
     "peopleInvolved": "Description of people involved",
@@ -100,7 +124,12 @@ Respond with VALID JSON only, no markdown formatting, no code blocks. Use these 
     "unitsNeeded": "List of units to dispatch",
     "estimatedResponse": "Estimated response time in minutes",
     "additionalNotes": "Any additional notes"
-}]]
+}
+
+IMPORTANT:
+- If the report is vague (e.g., "someone got shot", "there is a robbery"), ALWAYS ask for more details.
+- Your followUpQuestion should be specific and helpful, asking for the missing information.
+- Only set needsClarification to false when you have: exact location, clear emergency type, people involved, and suspect details.]]
 
     local unifiedPrompt = string.format(
         "Caller: %s\nLocation (GPS): %s\nEmergency Type: %s\nCaller Report: %s",
@@ -111,21 +140,64 @@ Respond with VALID JSON only, no markdown formatting, no code blocks. Use these 
 
     CallAI(unifiedPrompt, unifiedSystem, function(response)
         if not response then
-            SendFailureResponse(source, 'AI failed to respond.')
+            SendFollowUpQuestion(source, 'The 911 center is experiencing technical difficulties. Please try again.', session)
             return
         end
 
         local data = ParseAIResponse(response)
         if not data then
-            SendFailureResponse(source, 'Failed to parse AI response.')
+            SendFollowUpQuestion(source, 'Unable to process your report. Please describe the emergency in more detail.', session)
             return
         end
 
+        -- Check if more information is needed
+        if data.needsClarification and data.followUpQuestion then
+            SendFollowUpQuestion(source, data.followUpQuestion, session)
+            return
+        end
+
+        -- Info is sufficient, build report
         BuildAndSendReport(source, data, data, message, playerName, emergencyType)
     end)
 end
 
---- 构建并发送完整案件报告
+--- Send a follow-up question to the player via chat
+function SendFollowUpQuestion(source, question, session)
+    if not session then return end
+
+    -- Increment follow-up counter
+    local followUps = (session.followUpCount or 0) + 1
+    UpdateSession(source, 'followUpCount', followUps)
+
+    -- Check if max questions reached
+    if followUps > MAX_FOLLOWUPS then
+        -- Too many follow-ups, just generate a basic report with available info
+        DebugLog('Max follow-ups reached for player ' .. source .. ', generating basic report')
+        local basicData = {
+            extractedLocation = session.locationStr or 'Unknown',
+            summary = session.message or 'Insufficient details provided',
+            severity = 'MEDIUM',
+            peopleInvolved = 'Not specified',
+            callerDescription = session.message or 'No additional details',
+        }
+        local basicDispatcher = {
+            dispatchCodes = 'Pending analysis',
+            priority = 'MEDIUM',
+            unitsNeeded = 'Not assigned',
+            estimatedResponse = 'TBD',
+            additionalNotes = 'Insufficient information for detailed analysis after ' .. MAX_FOLLOWUPS .. ' follow-up attempts',
+        }
+        BuildAndSendReport(source, basicData, basicDispatcher, session.message, session.playerName, session.emergencyType or 'unknown')
+        return
+    end
+
+    -- Send question to player via chat
+    TriggerClientEvent('911call:askQuestion', source, question)
+
+    DebugLog('Follow-up question ' .. followUps .. '/' .. MAX_FOLLOWUPS .. ' sent to player ' .. source)
+end
+
+--- Build and send the complete case report
 function BuildAndSendReport(source, operatorData, dispatcherData, message, playerName, emergencyType)
     local report = {
         caseNumber = GenerateCaseNumber(),
@@ -149,13 +221,13 @@ function BuildAndSendReport(source, operatorData, dispatcherData, message, playe
     SendCompleteReport(source, report)
 end
 
---- 解析AI返回的JSON响应（处理markdown代码块）
--- @param response string - AI原始回复文本
--- @return table|nil - 解析后的JSON数据
+--- Parse AI JSON response (handles markdown code blocks)
+-- @param response string - AI raw response text
+-- @return table|nil - Parsed JSON data
 function ParseAIResponse(response)
     if not response then return nil end
 
-    -- 移除markdown代码块标记
+    -- Remove markdown code blocks if present
     local cleaned = response
         :gsub('^```json\n?', '')
         :gsub('\n?```$', '')
@@ -176,15 +248,15 @@ function ParseAIResponse(response)
     return nil
 end
 
---- 发送完整报告到客户端
+--- Send complete report to client
 function SendCompleteReport(source, report)
-    -- 生成TTS文本（英文播报）
+    -- Generate TTS text (English broadcast)
     local ttsText = FormatReportForTTS(report)
     DebugLog('Generating TTS audio...')
 
     local audioPath = GenerateSpeech(ttsText)
 
-    -- 读取音频文件并编码为base64以便NUI播放
+    -- Read audio file and encode as base64 for NUI playback
     local audioBase64 = nil
     if audioPath then
         local fullPath = GetResourcePath('binarybeaco_911call') .. '/' .. audioPath
@@ -197,13 +269,13 @@ function SendCompleteReport(source, report)
         end
     end
 
-    -- 触发客户端显示报告和播放音频
+    -- Trigger client to display report and play audio
     TriggerClientEvent('911call:displayReport', source, report, audioPath, audioBase64)
 
     DebugLog('Report sent to player ' .. source .. ': ' .. report.caseNumber)
 end
 
---- 发送失败响应到客户端
+--- Send failure response to client
 function SendFailureResponse(source, errorMessage)
     local report = {
         caseNumber = GenerateCaseNumber(),
@@ -223,4 +295,143 @@ function SendFailureResponse(source, errorMessage)
     }
 
     TriggerClientEvent('911call:displayReport', source, report, nil, nil)
+end
+
+--- Process follow-up response (Style A): Operator re-evaluates combined info
+function ProcessStyleAFollowUp(source, combinedMessage, coords, emergencyType, playerName, locationStr)
+    local operatorSystem = [[You are a professional 911 emergency operator. The caller has provided additional information after your follow-up question.
+Evaluate the COMBINED information from all their messages.
+Determine if the report now contains enough detail to proceed.
+
+Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
+{
+    "needsClarification": true or false,
+    "followUpQuestion": "Specific question if more info needed. Leave empty if enough info.",
+    "extractedLocation": "Detailed location from combined reports",
+    "summary": "Brief summary combining all information",
+    "severity": "LOW|MEDIUM|HIGH|CRITICAL",
+    "peopleInvolved": "Description of people involved",
+    "callerDescription": "Full description from combined reports"
+}
+
+IMPORTANT:
+- Evaluate ALL messages together, not just the latest one.
+- If the combined info is sufficient, set needsClarification to false.
+- If still missing key details, ask a SPECIFIC follow-up question.]]
+
+    local operatorPrompt = string.format(
+        "Caller: %s\nLocation (GPS): %s\nEmergency Type: %s\nCombined Reports: %s",
+        playerName, locationStr, GetEmergencyDisplayName(emergencyType), combinedMessage
+    )
+
+    DebugLog('Operator follow-up AI call...')
+
+    CallAI(operatorPrompt, operatorSystem, function(operatorResponse)
+        if not operatorResponse then
+            SendFollowUpQuestion(source, 'Unable to process your response. Please try again.', GetSession(source))
+            return
+        end
+
+        local operatorData = ParseAIResponse(operatorResponse)
+        if not operatorData then
+            SendFollowUpQuestion(source, 'Unable to process your response. Please try again.', GetSession(source))
+            return
+        end
+
+        -- Check if more info is still needed
+        if operatorData.needsClarification and operatorData.followUpQuestion then
+            SendFollowUpQuestion(source, operatorData.followUpQuestion, GetSession(source))
+            return
+        end
+
+        -- Step 2: Dispatcher prompt
+        local dispatcherSystem = [[You are a professional 911 dispatcher. Based on the operator's summary, analyze the case and assign appropriate dispatch codes.
+Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
+{
+    "dispatchCodes": "UCR/NIBRS dispatch codes (e.g., 12-A, 10-Code)",
+    "priority": "LOW|MEDIUM|HIGH|CRITICAL",
+    "unitsNeeded": "List of units to dispatch (e.g., Police, Fire, EMS)",
+    "estimatedResponse": "Estimated response time in minutes",
+    "additionalNotes": "Any additional dispatcher notes"
+}]]
+
+        local dispatcherPrompt = string.format(
+            "Operator Summary: %s\nEmergency Type: %s\nSeverity: %s\nLocation: %s\nPeople Involved: %s",
+            operatorData.summary or 'N/A', emergencyType, operatorData.severity or 'N/A',
+            operatorData.extractedLocation or 'N/A', operatorData.peopleInvolved or 'N/A'
+        )
+
+        DebugLog('Dispatcher follow-up AI call...')
+
+        CallAI(dispatcherPrompt, dispatcherSystem, function(dispatcherResponse)
+            if not dispatcherResponse then
+                SendFailureResponse(source, 'AI dispatcher failed to respond.')
+                return
+            end
+
+            local dispatcherData = ParseAIResponse(dispatcherResponse)
+            if not dispatcherData then
+                SendFailureResponse(source, 'Failed to parse dispatcher response.')
+                return
+            end
+
+            BuildAndSendReport(source, operatorData, dispatcherData, combinedMessage, playerName, emergencyType)
+        end)
+    end)
+end
+
+--- Process follow-up response (Style B): Unified AI re-evaluates combined info
+function ProcessStyleBFollowUp(source, combinedMessage, coords, emergencyType, playerName, locationStr)
+    local unifiedSystem = [[You are a combined 911 emergency operator and dispatcher. The caller has provided additional information after your follow-up question.
+Evaluate the COMBINED information from all their messages.
+Determine if the report now contains enough detail to proceed.
+
+Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
+{
+    "needsClarification": true or false,
+    "followUpQuestion": "Specific question if more info needed. Leave empty if enough info.",
+    "extractedLocation": "Detailed location from combined reports",
+    "summary": "Brief summary combining all information",
+    "severity": "LOW|MEDIUM|HIGH|CRITICAL",
+    "peopleInvolved": "Description of people involved",
+    "dispatchCodes": "UCR/NIBRS dispatch codes",
+    "priority": "LOW|MEDIUM|HIGH|CRITICAL",
+    "unitsNeeded": "List of units to dispatch",
+    "estimatedResponse": "Estimated response time in minutes",
+    "additionalNotes": "Any additional notes"
+}
+
+IMPORTANT:
+- Evaluate ALL messages together, not just the latest one.
+- If the combined info is sufficient, set needsClarification to false.
+- If still missing key details, ask a SPECIFIC follow-up question.]]
+
+    local unifiedPrompt = string.format(
+        "Caller: %s\nLocation (GPS): %s\nEmergency Type: %s\nCombined Reports: %s",
+        playerName, locationStr, GetEmergencyDisplayName(emergencyType), combinedMessage
+    )
+
+    DebugLog('Unified follow-up AI call (Style B)...')
+
+    CallAI(unifiedPrompt, unifiedSystem, function(response)
+        if not response then
+            SendFollowUpQuestion(source, 'Unable to process your response. Please try again.', GetSession(source))
+            return
+        end
+
+        local data = ParseAIResponse(response)
+        if not data then
+            SendFollowUpQuestion(source, 'Unable to process your response. Please try again.', GetSession(source))
+            return
+        end
+
+        -- Check if more info is still needed
+        if data.needsClarification and data.followUpQuestion then
+            SendFollowUpQuestion(source, data.followUpQuestion, GetSession(source))
+            return
+        end
+
+        -- Info is sufficient, build report
+        BuildAndSendReport(source, data, data, combinedMessage, playerName, emergencyType)
+    end)
 end

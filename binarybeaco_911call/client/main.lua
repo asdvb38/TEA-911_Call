@@ -1,9 +1,9 @@
 -- ============================================================
--- 911呼叫插件 — 客户端主逻辑
--- 纯聊天框交互，无NUI视觉覆盖层
+-- 911 Call Plugin - Client Main
+-- Pure chat-based interaction, no NUI visual overlay
 -- ============================================================
 
--- 导入共享配置
+-- Import shared config
 SharedConfig = SharedConfig or {}
 SharedConfig.WaitTime = SharedConfig.WaitTime or 2000
 SharedConfig.ChatSettings = SharedConfig.ChatSettings or {
@@ -13,17 +13,17 @@ SharedConfig.ChatSettings = SharedConfig.ChatSettings or {
     CaseReportPrefix = '[CASE REPORT]',
 }
 
---- 处理服务端传来的开始流程事件
+--- Handle the start flow event from server
 RegisterNetEvent('911call:startFlow', function(waitTime)
     local delay = waitTime or SharedConfig.WaitTime
 
-    -- 立即显示系统消息
+    -- Show system message immediately
     TriggerEvent('chat:addMessage', {
         color = {255, 255, 255},
         args = {SharedConfig.ChatSettings.SystemPrefix, 'Connecting to 911 center...'},
     })
 
-    -- 延迟后显示紧急提示
+    -- Delay, then show emergency prompt
     SetTimeout(delay, function()
         TriggerEvent('chat:addMessage', {
             color = {0, 150, 255},
@@ -32,18 +32,34 @@ RegisterNetEvent('911call:startFlow', function(waitTime)
     end)
 end)
 
---- 处理案件报告显示
+--- Handle follow-up question from server (AI asking for more details)
+RegisterNetEvent('911call:askQuestion', function(question)
+    TriggerEvent('chat:addMessage', {
+        color = {255, 200, 0},
+        args = {SharedConfig.ChatSettings.OperatorPrefix, question},
+    })
+
+    -- Show hint for how to respond
+    SetTimeout(1000, function()
+        TriggerEvent('chat:addMessage', {
+            color = {150, 150, 150},
+            args = {'', '(Reply using /911say with the requested details)'},
+        })
+    end)
+end)
+
+--- Handle case report display
 RegisterNetEvent('911call:displayReport', function(report, audioPath, audioBase64)
     if not report then return end
 
-    -- 在聊天中显示完整报告
+    -- Display full report in chat
     local displayText = FormatReportDisplay(report)
     TriggerEvent('chat:addMessage', {
         color = {255, 255, 255},
         args = {'SYSTEM', displayText},
     })
 
-    -- 播放TTS语音广播
+    -- Play TTS audio broadcast
     if audioPath and audioPath ~= '' then
         TriggerEvent('911call:playTTSAudio', audioPath, audioBase64)
     else
@@ -54,7 +70,7 @@ RegisterNetEvent('911call:displayReport', function(report, audioPath, audioBase6
     end
 end)
 
---- 格式化报告用于聊天显示
+--- Format report for chat display
 function FormatReportDisplay(report)
     if not report then return '' end
 

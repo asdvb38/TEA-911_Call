@@ -3,38 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>911呼叫系统</title>
-    <link rel="stylesheet" href="style.css">
+    <title>911 Call System</title>
 </head>
-<body>
-    <!-- TTS语音广播音频元素 -->
+<body style="display:none;">
+    <!-- TTS语音广播音频（无视觉UI） -->
     <audio id="ttsAudio" preload="auto"></audio>
-
-    <!-- 操作提示覆盖层 -->
-    <div id="hint" class="hint-overlay hidden">
-        <div class="hint-text"></div>
-    </div>
-
-    <!-- 案件报告覆盖层 -->
-    <div id="reportOverlay" class="report-overlay hidden">
-        <div class="report-container">
-            <div class="report-header">
-                <span class="report-title">🚨 911 案件报告</span>
-                <span class="report-close" onclick="dismissReport()">[关闭]</span>
-            </div>
-            <div class="report-body" id="reportBody">
-                <!-- 报告内容动态注入 -->
-            </div>
-            <div class="report-footer">
-                <button id="playAudioBtn" class="btn btn-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-                    播放语音广播
-                </button>
-                <button id="dismissBtn" class="btn btn-secondary" onclick="dismissReport()">关闭</button>
-            </div>
-        </div>
-    </div>
-
     <script src="app.js"></script>
 </body>
 </html>

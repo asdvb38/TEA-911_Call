@@ -8,7 +8,7 @@
 function GenerateSpeechAzure(text)
     local ttsSettings = Config.TTSSettings
     if not ttsSettings or not ttsSettings.AzureKey or ttsSettings.AzureKey == 'YOUR_AZURE_TTS_KEY_HERE' then
-        print('^1[911呼叫] Azure TTS 密钥未配置！^7')
+        print('^1[911call] Azure TTS key not configured!^7')
         return nil
     end
 
@@ -19,17 +19,17 @@ function GenerateSpeechAzure(text)
     local tokenUrl = 'https://' .. region .. '.api.cognitiveservices.azure.com/sts/v1.0/issueToken'
     local tokenHeaders = 'Ocp-Apim-Subscription-Key: ' .. ttsSettings.AzureKey
 
-    DebugLog('正在获取 Azure TTS 令牌...')
+    DebugLog('Getting Azure TTS token...')
     local tokenResp, tokenStatus = PerformHttpRequest(tokenUrl, 'POST', '', tokenHeaders, 10000)
 
     if tokenStatus ~= 200 or not tokenResp then
-        print('^1[911呼叫] 获取 Azure TTS 令牌失败。状态码: ' .. tostring(tokenStatus) .. '^7')
+        print('^1[911call] Failed to get Azure TTS token. Status: ' .. tostring(tokenStatus) .. '^7')
         return nil
     end
 
     local accessToken = tokenResp  -- 新端点直接返回令牌字符串
     if not accessToken or #accessToken == 0 then
-        print('^1[911呼叫] 收到的令牌为空^7')
+        print('^1[911call] Empty access token received^7')
         return nil
     end
 
@@ -47,11 +47,11 @@ function GenerateSpeechAzure(text)
     local ttsUrl = 'https://' .. region .. '.tts.speech.microsoft.com/cognitiveservices/v1'
     local ttsHeaders = 'Authorization: Bearer ' .. accessToken .. '\r\nContent-Type: application/ssml+xml\r\nX-Microsoft-OutputFormat: riff-16khz-16bit-mono-pcm'
 
-    DebugLog('正在通过 Azure TTS 生成语音...')
+    DebugLog('Generating speech via Azure TTS...')
     local audioData, audioStatus = PerformHttpRequest(ttsUrl, 'POST', ssml, ttsHeaders, 30000)
 
     if not audioData or audioStatus ~= 200 then
-        print('^1[911呼叫] Azure TTS 生成失败。状态码: ' .. tostring(audioStatus) .. '^7')
+        print('^1[911call] Azure TTS generation failed. Status: ' .. tostring(audioStatus) .. '^7')
         return nil
     end
 
@@ -65,11 +65,11 @@ function GenerateSpeechAzure(text)
     if file then
         file:write(audioData)
         file:close()
-        DebugLog('Azure TTS 音频已保存: ' .. filePath)
+        DebugLog('Azure TTS audio saved: ' .. filePath)
         return filePath
     end
 
-    print('^1[911呼叫] 保存音频文件失败^7')
+    print('^1[911call] Failed to save audio file^7')
     return nil
 end
 
@@ -91,7 +91,7 @@ function GenerateSpeechEdge(text)
     -- 构建 edge-tts 命令
     local cmd = string.format('edge-tts --voice "%s" --text "%s" --write-media "%s"', voice, escapedText, fullPath)
 
-    DebugLog('Edge-TTS 命令: ' .. cmd)
+    DebugLog('Edge-TTS command: ' .. cmd)
 
     local handle = io.popen(cmd)
     if handle then
@@ -99,12 +99,12 @@ function GenerateSpeechEdge(text)
         local f = io.open(fullPath, 'rb')
         if f then
             f:close()
-            DebugLog('Edge-TTS 音频已保存: ' .. filePath)
+            DebugLog('Edge-TTS audio saved: ' .. filePath)
             return filePath
         end
     end
 
-    print('^1[911呼叫] Edge-TTS 生成失败。请安装: pip install edge-tts^7')
+    print('^1[911call] Edge-TTS failed. Install it with: pip install edge-tts^7')
     return nil
 end
 
@@ -119,7 +119,7 @@ function GenerateSpeech(text)
     if provider == 'azure' then
         local result = GenerateSpeechAzure(text)
         if result then return result end
-        print('^3[911呼叫] Azure TTS 不可用，降级使用 Edge-TTS^7')
+        print('^3[911call] Azure TTS unavailable, falling back to Edge-TTS^7')
     end
 
     return GenerateSpeechEdge(text)

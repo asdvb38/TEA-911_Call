@@ -11,7 +11,7 @@
 function CallAI(prompt, systemPrompt, callback)
     local apiSettings = Config.APISettings
     if not apiSettings or not apiSettings.APIKey or apiSettings.APIKey == 'YOUR_AGNES_API_KEY_HERE' then
-        print('^1[911呼叫] API密钥未配置！请在 config/settings.lua 中设置 Config.APISettings.APIKey^7')
+        print('^1[911call] API key not configured! Set Config.APISettings.APIKey in config/settings.lua^7')
         if callback then callback(nil) end
         return nil
     end
@@ -34,7 +34,7 @@ function CallAI(prompt, systemPrompt, callback)
     -- 构建请求头
     local headers = 'Authorization: Bearer ' .. apiSettings.APIKey .. '\r\nContent-Type: application/json'
 
-    DebugLog('正在调用AI API: ' .. url)
+    DebugLog('Calling AI API: ' .. url)
 
     --- 内部递归重试函数
     local function attemptRequest(retriesLeft)
@@ -43,7 +43,7 @@ function CallAI(prompt, systemPrompt, callback)
                 local data = json.decode(responseBody)
                 if data and data.choices and data.choices[1] and data.choices[1].message then
                     local content = data.choices[1].message.content
-                    DebugLog('AI回复已接收 (' .. #content .. ' 字符)')
+                    DebugLog('AI response received (' .. #content .. ' chars)')
                     if callback then
                         callback(content)
                     else
@@ -51,18 +51,18 @@ function CallAI(prompt, systemPrompt, callback)
                     end
                     return
                 end
-                print('^1[911呼叫] API响应格式异常^7')
+                print('^1[911call] Unexpected API response format^7')
             elseif statusCode == 521 or statusCode == 520 then
-                -- Cloudflare/临时错误，进行重试
+                -- Cloudflare/temporary error, retry
                 if retriesLeft > 0 then
-                    DebugLog('API重试 ' .. (10 - retriesLeft) .. '/10 (状态码: ' .. tostring(statusCode) .. ')')
+                    DebugLog('API retry ' .. (10 - retriesLeft) .. '/10 (status: ' .. tostring(statusCode) .. ')')
                     Wait(2000)
                     attemptRequest(retriesLeft - 1)
                     return
                 end
             end
 
-            print('^1[911呼叫] API请求失败。状态码: ' .. tostring(statusCode) .. '^7')
+            print('^1[911call] API request failed. Status: ' .. tostring(statusCode) .. '^7')
             if callback then callback(nil) end
         end, requestBody, headers, timeout)
     end

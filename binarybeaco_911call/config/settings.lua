@@ -16,12 +16,8 @@ Config.APISettings = {
 
 -- TTS（文字转语音）设置
 Config.TTSSettings = {
-    Provider = "edge",    -- "azure" 或 "edge"（edge为免费方案）
-    -- Azure TTS 设置
-    AzureRegion = "eastus",
-    AzureKey = "YOUR_AZURE_TTS_KEY_HERE",
-    Voice = "en-US-AriaNeural",
-    -- Edge-TTS 设置（免费备选）
+    Provider = "edge",    -- "edge" 免费方案（需安装: pip install edge-tts）
+    -- Edge-TTS 设置
     EdgeVoice = "en-US-AriaNeural",
 }
 
@@ -34,12 +30,12 @@ Config.WaitTime = 2000    -- 显示"911 请描述您的紧急情况"前的等待
 -- 语言（TTS 始终使用英文播报）
 Config.Language = "en"
 
--- 聊天显示设置
+-- 聊天显示设置（英文，与TTS保持一致）
 Config.ChatSettings = {
-    OperatorPrefix = "[接线员]",
-    DispatcherPrefix = "[调度员]",
-    SystemPrefix = "[911系统]",
-    CaseReportPrefix = "[案件报告]",
+    OperatorPrefix = "[OPERATOR]",
+    DispatcherPrefix = "[DISPATCHER]",
+    SystemPrefix = "[911 SYSTEM]",
+    CaseReportPrefix = "[CASE REPORT]",
 }
 
 -- 调试开关

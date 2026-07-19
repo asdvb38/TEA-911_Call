@@ -22,10 +22,10 @@ local function LoadConfig()
             fn()
             return Config
         else
-            print('^1[911呼叫] 加载配置失败: ' .. tostring(err) .. '^7')
+            print('^1[911call] Failed to load config: ' .. tostring(err) .. '^7')
         end
     else
-        print('^1[911呼叫] 配置文件不存在: ' .. filePath .. '^7')
+        print('^1[911call] Config file not found: ' .. filePath .. '^7')
     end
 
     -- 配置加载失败时使用默认值
@@ -48,10 +48,10 @@ local function LoadConfig()
         WaitTime = 2000,
         Language = 'en',
         ChatSettings = {
-            OperatorPrefix = '[接线员]',
-            DispatcherPrefix = '[调度员]',
-            SystemPrefix = '[911系统]',
-            CaseReportPrefix = '[案件报告]',
+            OperatorPrefix = '[OPERATOR]',
+            DispatcherPrefix = '[DISPATCHER]',
+            SystemPrefix = '[911 SYSTEM]',
+            CaseReportPrefix = '[CASE REPORT]',
         },
         EnableDebug = false,
     }
@@ -59,7 +59,7 @@ end
 
 Config = LoadConfig()
 
---- 记录调试日志
+--- Log debug messages
 function DebugLog(msg)
     if Config.EnableDebug then
         print('^5[911呼叫 调试]^7 ' .. tostring(msg))
@@ -82,7 +82,7 @@ function CreateSession(source, playerName)
         status = 'initiated',
         caseNumber = nil,
     }
-    DebugLog('为玩家 ' .. source .. ' 创建会话: ' .. CallSessions[source].playerName)
+    DebugLog('Session created for player ' .. source .. ': ' .. CallSessions[source].playerName)
 end
 
 --- 获取当前会话
@@ -94,14 +94,14 @@ end
 function UpdateSession(source, field, value)
     if CallSessions[source] then
         CallSessions[source][field] = value
-        DebugLog('会话更新: ' .. field .. ' = ' .. tostring(value))
+        DebugLog('Session updated: ' .. field .. ' = ' .. tostring(value))
     end
 end
 
 --- 完成并清理会话
 function CompleteSession(source)
     if CallSessions[source] then
-        DebugLog('玩家 ' .. source .. ' 会话已完成')
+        DebugLog('Session completed for player ' .. source)
         CallSessions[source] = nil
     end
 end
@@ -114,7 +114,7 @@ RegisterCommand('911call', function(source, args, rawCommand)
     if HasActiveSession(source) then
         TriggerClientEvent('chat:addMessage', source, {
             color = {255, 0, 0},
-            args = {'错误', '您已有一个活跃的911呼叫会话。请使用 /911say 描述您的紧急情况。'}
+            args = {'ERROR', 'You already have an active 911 call session. Use /911say to report.'}
         })
         return
     end
@@ -127,7 +127,7 @@ RegisterCommand('911call', function(source, args, rawCommand)
     local waitTime = Config.WaitTime or 2000
     TriggerClientEvent('911call:startFlow', source, waitTime)
 
-    DebugLog('玩家 ' .. source .. ' 使用了 /911call')
+    DebugLog('/911call executed by player ' .. source)
 end, false)
 
 --- 注册 /911say 命令
@@ -138,7 +138,7 @@ RegisterCommand('911say', function(source, args, rawCommand)
     if not HasActiveSession(source) then
         TriggerClientEvent('chat:addMessage', source, {
             color = {255, 0, 0},
-            args = {'错误', '请先使用 /911call 开始911报案。'}
+            args = {'ERROR', 'Use /911call first to start a 911 report.'}
         })
         return
     end
@@ -148,7 +148,7 @@ RegisterCommand('911say', function(source, args, rawCommand)
     if message == '' or #message < 3 then
         TriggerClientEvent('chat:addMessage', source, {
             color = {255, 0, 0},
-            args = {'错误', '请详细描述您的紧急情况。例如: /911say 我看到加油站有人开枪射击'}
+            args = {'ERROR', 'Please describe your emergency. Example: /911say I see a shooting at the gas station on 1st street.'}
         })
         return
     end
@@ -162,7 +162,7 @@ RegisterCommand('911say', function(source, args, rawCommand)
     local coords = GetEntityCoords(ped)
     UpdateSession(source, 'location', { x = coords.x, y = coords.y, z = coords.z })
 
-    DebugLog('玩家 ' .. source .. ' 报告: ' .. message)
+    DebugLog('Player ' .. source .. ' reported: ' .. message)
 
     -- 触发服务端AI处理
     ProcessReport(source)
@@ -178,7 +178,7 @@ function ProcessReport(source)
 
     -- 第一步：通过触发词分类紧急类型
     local emergencyType = ClassifyEmergency(message)
-    DebugLog('紧急类型分类: ' .. emergencyType)
+    DebugLog('Emergency type classified: ' .. emergencyType)
 
     -- 第二步：根据调度风格处理
     local dispatchStyle = Config.DispatchStyle or 'A'

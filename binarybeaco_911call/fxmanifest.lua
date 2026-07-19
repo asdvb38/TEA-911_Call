@@ -1,7 +1,7 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'BinaryBeaco'
+author 'TEARLESSVVOID/asdvb38'
 description '911紧急呼叫系统 - AI驱动调度与语音广播'
 version '1.0.0'
 
@@ -13,7 +13,6 @@ shared_scripts {
 client_scripts {
     'client/main.lua',
     'client/audio.lua',
-    'client/ui.lua',
 }
 
 server_scripts {
@@ -28,9 +27,10 @@ ui_page 'html/index.html'
 
 files {
     'html/index.html',
-    'html/style.css',
     'html/app.js',
     'config/triggerwords.json',
+    'audio/*.wav',
+    'audio/*.mp3',
 }
 
 lua54 'yes'

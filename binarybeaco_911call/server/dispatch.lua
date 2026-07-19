@@ -13,64 +13,64 @@ function ProcessStyleA(source, message, coords, emergencyType)
     local locationStr = CoordsToString(coords)
 
     -- 第一步：接线员提示词
-    local operatorSystem = [[你是一个专业的911紧急接线员。仔细分析呼叫者的紧急情况报告。
-从呼叫者描述和GPS坐标中提取尽可能详细的地点信息。
-只回复有效的JSON格式，不要使用markdown格式，不要用代码块。使用以下字段名：
+    local operatorSystem = [[You are a professional 911 emergency operator. Analyze the caller's emergency report carefully.
+Extract the most detailed location information possible from what the caller describes AND their GPS coordinates.
+Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
 {
-    "extractedLocation": "从呼叫者描述和GPS提取的详细地点",
-    "summary": "紧急情况的简要摘要",
-    "severity": "低|中|高|危急",
-    "peopleInvolved": "涉及人员描述",
-    "callerDescription": "呼叫者情况简述"
+    "extractedLocation": "Detailed location from caller description and GPS",
+    "summary": "Brief summary of the emergency situation",
+    "severity": "LOW|MEDIUM|HIGH|CRITICAL",
+    "peopleInvolved": "Description of people involved",
+    "callerDescription": "Brief description of the caller's situation"
 }]]
 
     local operatorPrompt = string.format(
-        "呼叫者: %s\n位置(GPS): %s\n紧急类型: %s\n呼叫者报告: %s",
+        "Caller: %s\nLocation (GPS): %s\nEmergency Type: %s\nCaller Report: %s",
         playerName, locationStr, GetEmergencyDisplayName(emergencyType), message
     )
 
-    DebugLog('接线员AI调用...')
+    DebugLog('Operator AI call...')
 
     CallAI(operatorPrompt, operatorSystem, function(operatorResponse)
         if not operatorResponse then
-            SendFailureResponse(source, '接线员AI未能响应。')
+            SendFailureResponse(source, 'AI operator failed to respond.')
             return
         end
 
         local operatorData = ParseAIResponse(operatorResponse)
         if not operatorData then
-            SendFailureResponse(source, '无法解析接线员回复。')
+            SendFailureResponse(source, 'Failed to parse operator response.')
             return
         end
 
         -- 第二步：调度员提示词
-        local dispatcherSystem = [[你是一个专业的911调度员。根据接线员的摘要，分析案件并分配相应的调度代码。
-只回复有效的JSON格式，不要使用markdown格式，不要用代码块。使用以下字段名：
+        local dispatcherSystem = [[You are a professional 911 dispatcher. Based on the operator's summary, analyze the case and assign appropriate dispatch codes.
+Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
 {
-    "dispatchCodes": "UCR/NIBRS调度代码（例如: 12-A, 10-Code）",
-    "priority": "低|中|高|危急",
-    "unitsNeeded": "需要出动的单位（例如: 警察, 消防, 救护车）",
-    "estimatedResponse": "预计响应时间（分钟）",
-    "additionalNotes": "任何额外的调度员备注"
+    "dispatchCodes": "UCR/NIBRS dispatch codes (e.g., 12-A, 10-Code)",
+    "priority": "LOW|MEDIUM|HIGH|CRITICAL",
+    "unitsNeeded": "List of units to dispatch (e.g., Police, Fire, EMS)",
+    "estimatedResponse": "Estimated response time in minutes",
+    "additionalNotes": "Any additional dispatcher notes"
 }]]
 
         local dispatcherPrompt = string.format(
-            "接线员摘要: %s\n紧急类型: %s\n严重程度: %s\n地点: %s\n涉及人员: %s",
-            operatorData.summary or '无', emergencyType, operatorData.severity or '无',
-            operatorData.extractedLocation or '无', operatorData.peopleInvolved or '无'
+            "Operator Summary: %s\nEmergency Type: %s\nSeverity: %s\nLocation: %s\nPeople Involved: %s",
+            operatorData.summary or 'N/A', emergencyType, operatorData.severity or 'N/A',
+            operatorData.extractedLocation or 'N/A', operatorData.peopleInvolved or 'N/A'
         )
 
-        DebugLog('调度员AI调用...')
+        DebugLog('Dispatcher AI call...')
 
         CallAI(dispatcherPrompt, dispatcherSystem, function(dispatcherResponse)
             if not dispatcherResponse then
-                SendFailureResponse(source, '调度员AI未能响应。')
+                SendFailureResponse(source, 'AI dispatcher failed to respond.')
                 return
             end
 
             local dispatcherData = ParseAIResponse(dispatcherResponse)
             if not dispatcherData then
-                SendFailureResponse(source, '无法解析调度员回复。')
+                SendFailureResponse(source, 'Failed to parse dispatcher response.')
                 return
             end
 
@@ -88,36 +88,36 @@ function ProcessStyleB(source, message, coords, emergencyType)
     local playerName = session.playerName
     local locationStr = CoordsToString(coords)
 
-    local unifiedSystem = [[你是一个统一的911紧急接线员兼调度员。分析呼叫者的紧急报告并提供全面的案件分析。
-只回复有效的JSON格式，不要使用markdown格式，不要用代码块。使用以下字段名：
+    local unifiedSystem = [[You are a combined 911 emergency operator and dispatcher. Analyze the caller's emergency report and provide a comprehensive case analysis.
+Respond with VALID JSON only, no markdown formatting, no code blocks. Use these exact field names:
 {
-    "extractedLocation": "从呼叫者描述和GPS提取的详细地点",
-    "summary": "紧急情况的简要摘要",
-    "severity": "低|中|高|危急",
-    "peopleInvolved": "涉及人员描述",
-    "dispatchCodes": "UCR/NIBRS调度代码",
-    "priority": "低|中|高|危急",
-    "unitsNeeded": "需要出动的单位",
-    "estimatedResponse": "预计响应时间（分钟）",
-    "additionalNotes": "任何额外备注"
+    "extractedLocation": "Detailed location from caller description and GPS",
+    "summary": "Brief summary of the emergency situation",
+    "severity": "LOW|MEDIUM|HIGH|CRITICAL",
+    "peopleInvolved": "Description of people involved",
+    "dispatchCodes": "UCR/NIBRS dispatch codes",
+    "priority": "LOW|MEDIUM|HIGH|CRITICAL",
+    "unitsNeeded": "List of units to dispatch",
+    "estimatedResponse": "Estimated response time in minutes",
+    "additionalNotes": "Any additional notes"
 }]]
 
     local unifiedPrompt = string.format(
-        "呼叫者: %s\n位置(GPS): %s\n紧急类型: %s\n呼叫者报告: %s",
+        "Caller: %s\nLocation (GPS): %s\nEmergency Type: %s\nCaller Report: %s",
         playerName, locationStr, GetEmergencyDisplayName(emergencyType), message
     )
 
-    DebugLog('统一AI调用（风格B）...')
+    DebugLog('Unified AI call (Style B)...')
 
     CallAI(unifiedPrompt, unifiedSystem, function(response)
         if not response then
-            SendFailureResponse(source, 'AI未能响应。')
+            SendFailureResponse(source, 'AI failed to respond.')
             return
         end
 
         local data = ParseAIResponse(response)
         if not data then
-            SendFailureResponse(source, '无法解析AI回复。')
+            SendFailureResponse(source, 'Failed to parse AI response.')
             return
         end
 
@@ -131,17 +131,17 @@ function BuildAndSendReport(source, operatorData, dispatcherData, message, playe
         caseNumber = GenerateCaseNumber(),
         emergencyType = GetEmergencyDisplayName(emergencyType),
         emergencyTypeRaw = emergencyType,
-        location = operatorData.extractedLocation or '未知',
-        summary = operatorData.summary or '无详细信息',
-        severity = operatorData.severity or '中',
-        peopleInvolved = operatorData.peopleInvolved or '未说明',
+        location = operatorData.extractedLocation or 'Unknown',
+        summary = operatorData.summary or 'No details available',
+        severity = operatorData.severity or 'MEDIUM',
+        peopleInvolved = operatorData.peopleInvolved or 'Not specified',
         callerDescription = operatorData.callerDescription or message,
-        dispatchCodes = dispatcherData.dispatchCodes or '待分析',
-        priority = dispatcherData.priority or operatorData.severity or '中',
-        units = dispatcherData.unitsNeeded or '未分配',
-        estimatedResponse = dispatcherData.estimatedResponse or '待定',
+        dispatchCodes = dispatcherData.dispatchCodes or 'Pending analysis',
+        priority = dispatcherData.priority or operatorData.severity or 'MEDIUM',
+        units = dispatcherData.unitsNeeded or 'Not assigned',
+        estimatedResponse = dispatcherData.estimatedResponse or 'TBD',
         additionalNotes = dispatcherData.additionalNotes or '',
-        status = '活跃',
+        status = 'ACTIVE',
         callerName = playerName,
         timestamp = os.date('%Y-%m-%d %H:%M:%S'),
     }
@@ -167,12 +167,12 @@ function ParseAIResponse(response)
 
     local data = json.decode(cleaned)
     if data then
-        DebugLog('AI响应解析成功')
+        DebugLog('AI response parsed successfully')
         return data
     end
 
-    print('^1[911呼叫] 无法解析AI JSON响应:^7')
-    print('^3[911呼叫] ' .. cleaned .. '^7')
+    print('^1[911call] Failed to parse AI JSON response:^7')
+    print('^3[911call] ' .. cleaned .. '^7')
     return nil
 end
 
@@ -180,7 +180,7 @@ end
 function SendCompleteReport(source, report)
     -- 生成TTS文本（英文播报）
     local ttsText = FormatReportForTTS(report)
-    DebugLog('正在生成语音广播...')
+    DebugLog('Generating TTS audio...')
 
     local audioPath = GenerateSpeech(ttsText)
 
@@ -193,31 +193,31 @@ function SendCompleteReport(source, report)
             local data = file:read('*all')
             file:close()
             audioBase64 = 'data:audio/wav;base64,' .. Base64Encode(data)
-            DebugLog('音频已编码为Base64 (' .. #audioBase64 .. ' 字节)')
+            DebugLog('Audio encoded to Base64 (' .. #audioBase64 .. ' bytes)')
         end
     end
 
     -- 触发客户端显示报告和播放音频
     TriggerClientEvent('911call:displayReport', source, report, audioPath, audioBase64)
 
-    DebugLog('报告已发送至玩家 ' .. source .. ': ' .. report.caseNumber)
+    DebugLog('Report sent to player ' .. source .. ': ' .. report.caseNumber)
 end
 
 --- 发送失败响应到客户端
 function SendFailureResponse(source, errorMessage)
     local report = {
         caseNumber = GenerateCaseNumber(),
-        emergencyType = '通信错误',
-        location = '未知',
+        emergencyType = 'Communication Error',
+        location = 'Unknown',
         summary = errorMessage,
-        severity = '中',
-        peopleInvolved = '无',
-        dispatchCodes = '无',
-        priority = '中',
-        units = '无',
-        estimatedResponse = '待定',
-        additionalNotes = 'AI通信失败',
-        status = '失败',
+        severity = 'MEDIUM',
+        peopleInvolved = 'N/A',
+        dispatchCodes = 'N/A',
+        priority = 'MEDIUM',
+        units = 'None',
+        estimatedResponse = 'TBD',
+        additionalNotes = 'AI communication failed',
+        status = 'FAILED',
         callerName = GetPlayerName(source),
         timestamp = os.date('%Y-%m-%d %H:%M:%S'),
     }

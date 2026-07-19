@@ -4,14 +4,14 @@
 
 local TriggerWordsCache = nil
 
---- 从 JSON 配置文件加载触发词库
+--- Load trigger words from JSON config file
 function LoadTriggerWords()
     if TriggerWordsCache then return TriggerWordsCache end
 
     local path = 'config/triggerwords.json'
     local file = LoadResourceFile('binarybeaco_911call', path)
     if not file then
-        print('^1[911呼叫] 无法加载 triggerwords.json，使用默认词库^7')
+        print('^1[911call] Failed to load triggerwords.json, using defaults^7')
         return {}
     end
 
@@ -19,7 +19,7 @@ function LoadTriggerWords()
     return TriggerWordsCache
 end
 
---- 通过匹配触发词对消息进行分类
+--- Classify a message by matching trigger words
 -- @param message string - 玩家的紧急报告内容
 -- @return string - 分类后的紧急类型
 function ClassifyEmergency(message)
@@ -45,27 +45,27 @@ function ClassifyEmergency(message)
     return bestMatch
 end
 
---- 获取紧急类型的中文显示名称
+--- Get a display name for emergency type (English, consistent with TTS)
 -- @param type string - 分类后的紧急类型
 -- @return string - 人类可读的名称
 function GetEmergencyDisplayName(type)
     local names = {
-        shooting = '枪击事件',
-        robbery = '抢劫',
-        car_accident = '车辆事故',
-        kidnapping = '绑架',
-        domestic_violence = '家庭暴力',
-        suspicious_activity = '可疑活动',
-        medical_emergency = '医疗急救',
-        fire = '火灾/爆炸',
-        assault = '袭击',
-        hostage = '劫持人质',
-        unknown = '未分类',
+        shooting = 'Shooting Incident',
+        robbery = 'Robbery',
+        car_accident = 'Vehicle Accident',
+        kidnapping = 'Kidnapping',
+        domestic_violence = 'Domestic Violence',
+        suspicious_activity = 'Suspicious Activity',
+        medical_emergency = 'Medical Emergency',
+        fire = 'Fire/Explosion',
+        assault = 'Assault',
+        hostage = 'Hostage Situation',
+        unknown = 'Unclassified',
     }
     return names[type] or type
 end
 
---- 获取当前玩家坐标（仅限客户端使用）
+--- Get current player coordinates (client-side only)
 -- @return table - {x, y, z} 坐标
 function GetPlayerCoords()
     local ped = PlayerPedId()
@@ -73,14 +73,14 @@ function GetPlayerCoords()
     return { x = coords.x, y = coords.y, z = coords.z }
 end
 
---- 将坐标转换为可读字符串
+--- Convert coordinates to a readable string
 -- @param coords table - {x, y, z} 坐标
 -- @return string - 可读坐标字符串
 function CoordsToString(coords)
     return string.format('%.2f, %.2f, %.2f', coords.x, coords.y, coords.z)
 end
 
---- 生成唯一案件编号
+--- Generate a unique case number
 -- @return string - 格式: 911-YYYYMMDD-XXXX
 function GenerateCaseNumber()
     local date = os.date('%Y%m%d')
@@ -88,14 +88,14 @@ function GenerateCaseNumber()
     return string.format('911-%s-%s', date, rand)
 end
 
---- Base64 编码
+--- Base64 encode
 -- @param data string - 原始二进制数据
 -- @return string - Base64 编码字符串
 function Base64Encode(data)
     return b64encode(data)
 end
 
---- 格式化案件报告用于聊天显示
+--- Format a case report for display
 -- @param report table - 原始报告数据
 -- @return string - 格式化后的报告文本
 function FormatCaseReport(report)
@@ -114,7 +114,7 @@ function FormatCaseReport(report)
     return table.concat(lines, '\n')
 end
 
---- 格式化报告为纯文本用于TTS播报（英文，无特殊字符）
+--- Format report as plain text for TTS broadcast (English)
 -- @param report table - 原始报告数据
 -- @return string - 用于语音合成的纯文本
 function FormatReportForTTS(report)
